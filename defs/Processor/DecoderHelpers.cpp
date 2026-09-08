@@ -263,8 +263,8 @@ namespace cpu::decoder {
                 uint16_t resolvedAddress = static_cast<int16_t>(RF.PC.readPC()) + 2 + offset; //NOTE: ChHECK THAT THIS IS THE DESIRED PC POLICY, EG THAT PC HAS NOT YET BEEN INCREMENTED YET
                 operands.operandPageCrossed = (ram.getPageIDFromAddress(RF.PC.readPC() + 2) != ram.getPageIDFromAddress(resolvedAddress)); // add cycle penalty of +1 cycle (on TOP of branching penalty) if target is on different page
                 // now write to operand, with LSB in A slot and MSB in B
-                operands.operandA = fetchByteFromWord16b(resolvedAddress, memory::byteSignificance::LOW);
-                operands.operandB = fetchByteFromWord16b(resolvedAddress, memory::byteSignificance::HIGH);
+                operands.operandA = helpers::binary::fetchByteFromWord16b(resolvedAddress, memory::byteSignificance::LOW);
+                operands.operandB = helpers::binary::fetchByteFromWord16b(resolvedAddress, memory::byteSignificance::HIGH);
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandWordAddress = resolvedAddress; }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::Rel)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;

@@ -1,6 +1,7 @@
-#include <misc/miscHelpers.h>
+
 #include <Processor/CPUMisc.h>
 #include <Memory/MemoryRAM.h>
+#include <Misc/BinaryHelpers.h>
 
 namespace helpers::binary {
     class BinaryHelpers {

@@ -2,6 +2,7 @@
 
 //Holds def for data types meant for in-cpu-loop processing
 #pragma once
+#include <optional>
 #include <Processor/InstructionTypes.h>
 
 namespace cpu::execution{

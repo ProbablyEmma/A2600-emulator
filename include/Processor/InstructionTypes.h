@@ -139,9 +139,9 @@ namespace cpu::instructions {
         // Register level information, write expressions like: static_cast<FlagMask>(StatusFlag::N) | static_cast<FlagMask>(StatusFlag::Z)
         cpu::registers::FlagMask readFlags;
         cpu::registers::FlagMask writeFlags;
-        cpu::ChipType CPUBehavior = cpu::hw::ChipType::NMOS6502; //NOTE: the CMOS and NMOS variants of the 6502 perform slightly differently, as does the later variants. 
+        cpu::ChipType CPUBehavior = cpu::ChipType::NMOS6502; //NOTE: the CMOS and NMOS variants of the 6502 perform slightly differently, as does the later variants. 
         //The NMOS variant is notably bugged for JMP indirect instructions, which needs to be accounted for.
-        void (CPU::*execute)(const Instruction&); // Structure: this is a pointer to a method in the main CPU class which takes in an instruction
+        //void (CPU::*execute)(const Instruction&); // Structure: this is a pointer to a method in the main CPU class which takes in an instruction
     };
 
     extern const Instruction opcodeTable[256]; // Declaring an array of instructions for InstructionOps.h... idea is that I can do opcodeTable[Instruction_LDA] or something and get back all relevant info

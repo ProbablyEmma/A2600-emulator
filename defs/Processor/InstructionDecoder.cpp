@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <optional>
+#include <stdexcept>
 
 #include <Processor/CPUMisc.h>
 #include <Processor/CPURuntimeTypes.h>
@@ -15,6 +16,7 @@
 #include <Processor/InstructionTypes.h>
 #include <Processor/InstructionDecoder.h>
 #include <Processor/DecoderHelpers.h>
+#include <Misc/BCDTypeDef.h>
 
 
 
@@ -46,25 +48,25 @@ public:
                 uint8_t result, newFlags, cycleCost;
                 cpu::execution::FlagResult resFlags;
                 //bool isCarry, isOverflow, isZero, isNegative;
-                bool isDecimal = RF.SR.readFlag(StatusFlag::D);
+                bool isDecimal = RF.SR.readFlag(cpu::registers::StatusFlag::D);
                 if (data.operandA.has_value() && (!isDecimal)) {
-                    result = RF.A.read() + data.operandA.value() + RF.SR.readFlag(StatusFlag::C);
-                    resFlags.carry = helpers::decoder::checkIfOperationCarry(RF.A.read(), data.operandA.value(), RF.SR.readFlag(StatusFlag::C));
-                    resFlags.overflow = helpers::decoder::checkIfOperationOverflow(RF.A.read(), data.operandA.value(), RF.SR.readFlag(StatusFlag::C));
+                    result = RF.A.read() + data.operandA.value() + RF.SR.readFlag(cpu::registers::StatusFlag::C);
+                    resFlags.carry = helpers::decoder::checkIfOperationCarry(RF.A.read(), data.operandA.value(), RF.SR.readFlag(cpu::registers::StatusFlag::C));
+                    resFlags.overflow = helpers::decoder::checkIfOperationOverflow(RF.A.read(), data.operandA.value(), RF.SR.readFlag(cpu::registers::StatusFlag::C));
                     resFlags.zero = helpers::decoder::checkIfDataZero(result);
                     resFlags.negative = helpers::decoder::checkIfDataNegative(result);
                 }
                 else if (data.operandA.has_value() && (isDecimal))
                 {
-                    uint8_t binarySum = RF.A.read() + data.operandA.value() + RF.SR.readFlag(StatusFlag::C);
+                    uint8_t binarySum = RF.A.read() + data.operandA.value() + RF.SR.readFlag(cpu::registers::StatusFlag::C);
                     helpers::decimal::BCD8 Acc = helpers::decimal::BCD8(RF.A.read());
                     helpers::decimal::BCD8 Op = helpers::decimal::BCD8(data.operandA.value());
-                    helpers::decimal::BCD8 Carry = helpers::decimal::BCD8(static_cast<uint8_t>(RF.SR.readFlag(StatusFlag::C)));
+                    helpers::decimal::BCD8 Carry = helpers::decimal::BCD8(static_cast<uint8_t>(RF.SR.readFlag(cpu::registers::StatusFlag::C)));
                     Acc = Acc.operator+(Op);
                     Acc = Acc.operator+(Carry);
                     result = Acc.toBinary();
                     resFlags.carry = (Acc.toBinary() > 99);
-                    resFlags.overflow = helpers::decoder::checkIfOperationOverflow(RF.A.read(), data.operandA.value(), RF.SR.readFlag(StatusFlag::C));
+                    resFlags.overflow = helpers::decoder::checkIfOperationOverflow(RF.A.read(), data.operandA.value(), RF.SR.readFlag(cpu::registers::StatusFlag::C));
                     if (CpuTypeFamily == cpu::ChipType::NMOS6502) {
                         resFlags.zero = helpers::decoder::checkIfDataZero(binarySum);
                         resFlags.negative = helpers::decoder::checkIfDataNegative(binarySum);
@@ -85,17 +87,17 @@ public:
                 else { cycleCost = instr.cycleCount; }
                 instructionMetadata = makeInstructionMetaData(instr, cycleCost, result, resFlags);
                 RF.SR.commitFlags(instr, instructionMetadata);
-                helpers::decoder::commitData(result, data, ResultDestination::A, RAM, RF);
+                helpers::decoder::commitData(result, data, cpu::execution::ResultDestination::A, RAM, RF);
 
             };
 
-            void AND(cpu::instructions::Instruction) {
+            void AND(cpu::instructions::Instruction instr) {
                 // AND Memory with Accumulator, affects N and Z //
                 // Get encoded base instruction metadata
                 instructionMetadata.resolvedByteCount = instr.byteCount;
                 cpu::instructions::AddressingMode instructionMode = instr.addressMode;
                 // fetch data using base metadata
-                OperandData data = helpers::decoder::fetchOperands(instr, RF.PC.readPC(), RAM, RF, CpuTypeFamily);
+                cpu::execution::OperandData data = helpers::decoder::fetchOperands(instr, RF.PC.readPC(), RAM, RF, CpuTypeFamily);
                 //package flags up here when done
                 cpu::execution::FlagResult resFlags;
                 // init temp variables for result
@@ -113,10 +115,10 @@ public:
                 }
                 instructionMetadata = makeInstructionMetaData(instr, cycleCost, result, resFlags);
                 RF.SR.commitFlags(instr, instructionMetadata);
-                helpers::decoder::commitData(result, data, ResultDestination::A, RAM, RF);
+                helpers::decoder::commitData(result, data, cpu::execution::ResultDestination::A, RAM, RF);
             };
 
-            void ASL(cpu::instructions::Instruction) {
+            void ASL(cpu::instructions::Instruction instr) {
                 // Arithmetic shift one bit left, affects N, Z, C
                 // NOTE this is a R-m-W type instruction for all non accumulator modes
                 // 
@@ -146,24 +148,24 @@ public:
                 else { throw std::runtime_error("ERROR: (ASL Decode) invalid payload for operands"); }
                 // NOTE: this is a read-modify-write instruction, meaning that the destination might either be A (Accumulator) or the address of the original operand
                 // CHECK 1: did we assign these values for the operation mode? (sanity check)
-                if (instr.instructionModalities == InstructionSpecificModalities::ReadModifyWrite && data.useInstructionMode.has_value()) {
+                if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite && data.useInstructionMode.has_value()) {
                     if (data.useInstructionMode == true) { // CHECK 2 : are we using the specified RMW mode here?
                         // YES: we write to RAM
-                        if (data.operandByteAddress.has_value()) { helpers::decoder::commitData(result, data, ResultDestination::Mem, RAM, RF); }; //commit to memory
+                        if (data.operandByteAddress.has_value()) { helpers::decoder::commitData(result, data, cpu::execution::ResultDestination::Mem, RAM, RF); }; //commit to memory
                     }
                     if (data.useInstructionMode == false) { // CHECK 2 : are we using the specified RMW mode here?
                         // NO: we write to RF
-                        helpers::decoder::commitData(result, data, ResultDestination::A, RAM, RF); //commit to RF.A
+                        helpers::decoder::commitData(result, data, cpu::execution::ResultDestination::A, RAM, RF); //commit to RF.A
                     }
                 }
-                else { helpers::decoder::commitData(result, data, ResultDestination::A, RAM, RF); }; //commit to RF.A
+                else { helpers::decoder::commitData(result, data, cpu::execution::ResultDestination::A, RAM, RF); }; //commit to RF.A
                 cycleCost = instr.cycleCount;
                 if (data.operandPageCrossed.has_value()) { cycleCost += static_cast<uint8_t>(data.operandPageCrossed.value()); }
                 instructionMetadata = makeInstructionMetaData(instr, cycleCost, result, resFlags);
                 RF.SR.commitFlags(instr, instructionMetadata);
             };
 
-            void BCC(cpu::instructions::Instruction) {
+            void BCC(cpu::instructions::Instruction instr) {
                 // Branch on Carry clear, affects no flags
                 // 
                 // Get packed instruction data
@@ -178,7 +180,7 @@ public:
                 uint8_t basePage, branchPage;
                 // 
                 //Now run main computations on data
-                isBranching = !(RF.SR.readFlag(StatusFlag::C)); // Branch if C == 0
+                isBranching = !(RF.SR.readFlag(cpu::registers::StatusFlag::C)); // Branch if C == 0
                 //FIXME: CHECK if the page crossing behavior is wrt first byte PC or not
 
             };
@@ -187,7 +189,7 @@ public:
 
 
 
-            void SBC(cpu::instructions::Instruction) {
+            void SBC(cpu::instructions::Instruction instr) {
                 instructionMetadata.resolvedByteCount = instr.byteCount;
                 cpu::instructions::AddressingMode instructionMode = instr.addressMode;
                 cpu::execution::OperandData data = helpers::decoder::fetchOperands(instr, RF.PC.readPC(), RAM, RF, CpuTypeFamily);
@@ -195,27 +197,27 @@ public:
                 //package flags up here when done
                 cpu::execution::FlagResult resFlags;
                 //bool isCarry, isOverflow, isZero, isNegative;
-                bool isDecimal = RF.SR.readFlag(StatusFlag::D);
+                bool isDecimal = RF.SR.readFlag(cpu::registers::StatusFlag::D);
                 if (data.operandA.has_value() && (!isDecimal)) {
                     uint8_t invertedOperand = ~data.operandA.value();
-                    result = RF.A.read() + invertedOperand + RF.SR.readFlag(StatusFlag::C);
-                    resFlags.carry = helpers::decoder::checkIfOperationCarry(RF.A.read(), invertedOperand, RF.SR.readFlag(StatusFlag::C));
-                    resFlags.overflow = helpers::decoder::checkIfOperationOverflow(RF.A.read(), invertedOperand, RF.SR.readFlag(StatusFlag::C));
+                    result = RF.A.read() + invertedOperand + RF.SR.readFlag(cpu::registers::StatusFlag::C);
+                    resFlags.carry = helpers::decoder::checkIfOperationCarry(RF.A.read(), invertedOperand, RF.SR.readFlag(cpu::registers::StatusFlag::C));
+                    resFlags.overflow = helpers::decoder::checkIfOperationOverflow(RF.A.read(), invertedOperand, RF.SR.readFlag(cpu::registers::StatusFlag::C));
                     resFlags.zero = helpers::decoder::checkIfDataZero(result);
                     resFlags.negative = helpers::decoder::checkIfDataNegative(result);
                 }
                 else if (data.operandA.has_value() && (isDecimal))
                 {
                     uint8_t invertedOperand = ~data.operandA.value();
-                    uint8_t binarySum = RF.A.read() + invertedOperand + RF.SR.readFlag(StatusFlag::C);
+                    uint8_t binarySum = RF.A.read() + invertedOperand + RF.SR.readFlag(cpu::registers::StatusFlag::C);
                     helpers::decimal::BCD8 Acc = helpers::decimal::BCD8(RF.A.read());
                     helpers::decimal::BCD8 Op = helpers::decimal::BCD8(data.operandA.value());
-                    helpers::decimal::BCD8 Carry = helpers::decimal::BCD8(static_cast<uint8_t>(RF.SR.readFlag(StatusFlag::C)));
+                    helpers::decimal::BCD8 Carry = helpers::decimal::BCD8(static_cast<uint8_t>(RF.SR.readFlag(cpu::registers::StatusFlag::C)));
                     Acc = Acc.operator-(Op);
-                    Acc = Acc.operator-(helpers::decimal::BCD8(static_cast<uint8_t>(1 - RF.SR.readFlag(StatusFlag::C))));
+                    Acc = Acc.operator-(helpers::decimal::BCD8(static_cast<uint8_t>(1 - RF.SR.readFlag(cpu::registers::StatusFlag::C))));
                     result = Acc.toBinary();
-                    resFlags.carry = helpers::decoder::checkIfOperationCarry(RF.A.read(), invertedOperand, RF.SR.readFlag(StatusFlag::C));
-                    resFlags.overflow = helpers::decoder::checkIfOperationOverflow(RF.A.read(), invertedOperand, RF.SR.readFlag(StatusFlag::C));
+                    resFlags.carry = helpers::decoder::checkIfOperationCarry(RF.A.read(), invertedOperand, RF.SR.readFlag(cpu::registers::StatusFlag::C));
+                    resFlags.overflow = helpers::decoder::checkIfOperationOverflow(RF.A.read(), invertedOperand, RF.SR.readFlag(cpu::registers::StatusFlag::C));
                     if (CpuTypeFamily == cpu::ChipType::NMOS6502) {
                         resFlags.zero = helpers::decoder::checkIfDataZero(binarySum);
                         resFlags.negative = helpers::decoder::checkIfDataNegative(binarySum);
@@ -233,18 +235,18 @@ public:
                 if (data.operandPageCrossed.has_value()) {
                     cycleCost += static_cast<uint8_t>(data.operandPageCrossed.value());
                 }
-                if (isDecimal && cpu::CpuTypeFamily == cpu::ChipType::CMOS6502) {
+                if (isDecimal && CpuTypeFamily == cpu::ChipType::CMOS6502) {
                     cycleCost += 1;
                 }
 
                 instructionMetadata = makeInstructionMetaData(instr, cycleCost, result, resFlags);
                 RF.SR.commitFlags(instr, instructionMetadata);
-                helpers::decoder::commitData(result, data, ResultDestination::A, RAM, RF);
+                helpers::decoder::commitData(result, data, cpu::execution::ResultDestination::A, RAM, RF);
             };
 
 
             private:
-                cpu::execution::ResolvedInfoInstruction makeInstructionMetaData(cpu::instructions::Instruction, uint8_t resolvedCycleCount, uint8_t resultByte, cpu::execution::FlagResult flags) {
+                cpu::execution::ResolvedInfoInstruction makeInstructionMetaData(cpu::instructions::Instruction instr, uint8_t resolvedCycleCount, uint8_t resultByte, cpu::execution::FlagResult flags) {
                     cpu::execution::ResolvedInfoInstruction payload;
                     payload.instruc = instr;
                     // load flags
@@ -254,7 +256,7 @@ public:
                     if (flags.negative.has_value()) { payload.negative = flags.negative; }
 
                     payload.znSource = resultByte;
-                    payload.isPrimedData = true;
+                    //payload.isPrimedData = true;
                     return payload;
                 };
 

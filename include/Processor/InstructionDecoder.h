@@ -14,7 +14,7 @@ namespace cpu::decoder {
 
     class InstructionDecoder {
     private:
-        ResolvedInfoInstruction makeInstructionMetaData(
+        cpu::execution::ResolvedInfoInstruction makeInstructionMetaData(
             cpu::instructions::Instruction instr, uint8_t resolvedCycleCount, uint8_t resultByte,
             cpu::execution::FlagResult flags = {}
         );
