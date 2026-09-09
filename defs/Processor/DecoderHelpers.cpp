@@ -85,6 +85,14 @@ namespace cpu::decoder {
                 RF.Y.write(result);
                 break;
 
+            case cpu::execution::ResultDestination::PC:
+                throw std::runtime_error("ERROR: (CommitData_8b) Attempting to commit to PC with 8b value impossible");
+                break;
+
+            case cpu::execution::ResultDestination::SP:
+                throw std::runtime_error("ERROR: (CommitData_8b) Attempting to commit to SP with 8b value impossible");
+                break;
+
             case cpu::execution::ResultDestination::Mem:
                 // FOR Read-Modify-Write specifically, we need to write to the specified address (8b)
                 if (resultMeta.operandByteAddress.has_value()) { ram.writeByte(static_cast<uint16_t>(resultMeta.operandByteAddress.value()), result); }
@@ -108,6 +116,14 @@ namespace cpu::decoder {
 
             case cpu::execution::ResultDestination::Y:
                 RF.Y.write(result);
+                break;
+
+            case cpu::execution::ResultDestination::PC:
+                RF.PC.write(result);
+                break;
+
+            case cpu::execution::ResultDestination::SP:
+                RF.SP.write(result);
                 break;
 
             case cpu::execution::ResultDestination::Mem:
@@ -261,7 +277,7 @@ namespace cpu::decoder {
                 // eg BEQ 0x04 will (asssuming the condition is met) branch to PC + 2 + 0x04, so PC + 0x06
                 int8_t offset = static_cast<int8_t>(instrBuffer[1]); // cast unsigned uint to signed int 
                 uint16_t resolvedAddress = static_cast<int16_t>(RF.PC.readPC()) + 2 + offset; //NOTE: ChHECK THAT THIS IS THE DESIRED PC POLICY, EG THAT PC HAS NOT YET BEEN INCREMENTED YET
-                operands.operandPageCrossed = (ram.getPageIDFromAddress(RF.PC.readPC() + 2) != ram.getPageIDFromAddress(resolvedAddress)); // add cycle penalty of +1 cycle (on TOP of branching penalty) if target is on different page
+                operands.operandPageCrossed = (ram.getPageIDFromAddress(RF.PC.readPC()) != ram.getPageIDFromAddress(resolvedAddress)); // add cycle penalty of +1 cycle (on TOP of branching penalty) if target is on different page
                 // now write to operand, with LSB in A slot and MSB in B
                 operands.operandA = helpers::binary::fetchByteFromWord16b(resolvedAddress, memory::byteSignificance::LOW);
                 operands.operandB = helpers::binary::fetchByteFromWord16b(resolvedAddress, memory::byteSignificance::HIGH);

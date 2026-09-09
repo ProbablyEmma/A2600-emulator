@@ -17,6 +17,7 @@
 #include <Processor/InstructionDecoder.h>
 #include <Processor/DecoderHelpers.h>
 #include <Misc/BCDTypeDef.h>
+#include <Misc/BinaryHelpers.h>
 
 
 
@@ -177,12 +178,20 @@ public:
                 //
                 // Init data
                 bool isBranching, pageCrossedWhileBranching;
-                uint8_t basePage, branchPage;
+                uint8_t cycleCost;
+                uint16_t resolvedAddress = RF.PC.readPC(); // by default just use the base PC
                 // 
                 //Now run main computations on data
                 isBranching = !(RF.SR.readFlag(cpu::registers::StatusFlag::C)); // Branch if C == 0
                 //FIXME: CHECK if the page crossing behavior is wrt first byte PC or not
-
+                if (isBranching) {
+                    if (!((data.operandA.has_value()) && (data.operandB.has_value()))) {throw std::runtime_error("ERROR: (BCC Decode) invalid payload for operands");}
+                    resolvedAddress = helpers::binary::concatenateWordFromTwoBytes(data.operandB.value(), data.operandA.value());
+                }
+                helpers::decoder::commitData(resolvedAddress, data, cpu::execution::ResultDestination::PC, RAM, RF);
+                // cycle cost calculation
+                cycleCost = instr.cycleCount + static_cast<uint8_t>(isBranching);
+                if (data.operandPageCrossed.has_value()) { cycleCost += static_cast<uint8_t>(data.operandPageCrossed.value()); }
             };
 
 
