@@ -288,6 +288,7 @@ namespace cpu::decoder {
             default:
                 break;
             };
+            return operands;
 
         };
 

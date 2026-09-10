@@ -27,6 +27,8 @@ namespace cpu::execution{
         std::optional<bool> overflow;
         std::optional<bool> zero;
         std::optional<bool> negative;
+        std::optional<bool> decimal;
+        std::optional<bool> interrupt;
     public:
         void resetRunningPrimed(); // for timer, reset tally of running cycles
         bool incrementAndCheckTallyStale();
@@ -39,6 +41,8 @@ namespace cpu::execution{
         std::optional<bool> overflow;
         std::optional<bool> zero;
         std::optional<bool> negative;
+        std::optional<bool> decimal;
+        std::optional<bool> interrupt;
     };
 
     enum ResultDestination { //represent the destination of the result here, for programmatic reasons

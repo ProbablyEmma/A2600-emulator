@@ -37,17 +37,22 @@ namespace cpu::registers {
     void StatusRegister::commitFlags(const cpu::instructions::Instruction& instr, const cpu::execution::ResolvedInfoInstruction& instrMetaData) {
         // Check flag mask encoded in instruction and commit new data once checked
         FlagMask w = instr.writeFlags; // which flags are writable?
-        if ((w & static_cast<FlagMask>(StatusFlag::Z)) || (w & static_cast<FlagMask>(StatusFlag::N))) {
-            instrMetaData.znSource.has_value();
+        if (((w & static_cast<FlagMask>(StatusFlag::Z)) || (w & static_cast<FlagMask>(StatusFlag::N))) &&  instrMetaData.zero.has_value() && instrMetaData.negative.has_value()) {
             StatusRegister::setZN(*instrMetaData.znSource); //Update status register using source byte provided
         }
-        if (w & static_cast<FlagMask>(StatusFlag::C)) {
-            instrMetaData.carry.has_value();
+        if ((w & static_cast<FlagMask>(StatusFlag::C)) && instrMetaData.carry.has_value()) {
             StatusRegister::writeFlag(StatusFlag::C, *instrMetaData.carry);
         }
-        if (w & static_cast<FlagMask>(StatusFlag::V)) {
-            instrMetaData.overflow.has_value();
+        if ((w & static_cast<FlagMask>(StatusFlag::V)) && instrMetaData.overflow.has_value()) {
             StatusRegister::writeFlag(StatusFlag::V, *instrMetaData.overflow);
+        }
+
+        if ((w & static_cast<FlagMask>(StatusFlag::D)) && instrMetaData.decimal.has_value()) {
+            StatusRegister::writeFlag(StatusFlag::D, *instrMetaData.decimal);
+        }
+
+        if ((w & static_cast<FlagMask>(StatusFlag::I)) && instrMetaData.interrupt.has_value()) {
+            StatusRegister::writeFlag(StatusFlag::I, *instrMetaData.interrupt);
         }
     };
 
