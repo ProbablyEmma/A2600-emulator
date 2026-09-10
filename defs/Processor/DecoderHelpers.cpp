@@ -158,28 +158,36 @@ namespace cpu::decoder {
                 break;
 
             case cpu::instructions::AddressingMode::Immediate:
+            {
                 // Immediate instructions are always 2 bytes
                 operands.operandA = instrBuffer[1]; // 6502 uses LE convention but buffer is flipped: operand is at index 0
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::Imm)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             case cpu::instructions::AddressingMode::Absolute:
+            {
                 // Absolute addresses are ALWAYS 3 bytes, with data field here encoding the address at which data is fetched
                 uint16_t resolvedAddress = helpers::binary::concatenateWordFromTwoBytes(instrBuffer[2], instrBuffer[1]); // this is the address of our operand
                 operands.operandA = ram.readByte(resolvedAddress); // get byte from address
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandByteAddress = resolvedAddress; }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::Abs)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             case cpu::instructions::AddressingMode::ZeroPage:
+            {
                 // These instructions are always two-byte (operand + lower ZP address byte
-                uint16_t resolvedAddress = static_cast<uint16_t>(ZEROPAGE_OFFSET) & static_cast<uint16_t>(instrBuffer[1]);
+                uint16_t resolvedAddress;
+                resolvedAddress = static_cast<uint16_t>(ZEROPAGE_OFFSET) & static_cast<uint16_t>(instrBuffer[1]);
                 operands.operandA = ram.readByte(resolvedAddress); // get byte from address
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandByteAddress = resolvedAddress; }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::Zpg)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             case cpu::instructions::AddressingMode::AbsoluteXIndexed:
+            {
                 uint16_t resolvedAddressBase = helpers::binary::concatenateWordFromTwoBytes(instrBuffer[2], instrBuffer[1]); // this is the address of our operand
                 uint16_t resolvedAddress = resolvedAddressBase + static_cast<uint16_t>(RF.X.read()); // This mode does operand address (like absolute mode) + X
                 uint8_t basePageID = ram.getPageIDFromAddress(resolvedAddressBase);
@@ -189,8 +197,10 @@ namespace cpu::decoder {
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandByteAddress = resolvedAddress; }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::AbX)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             case cpu::instructions::AddressingMode::AbsoluteYIndexed:
+            {
                 uint16_t resolvedAddressBase = helpers::binary::concatenateWordFromTwoBytes(instrBuffer[2], instrBuffer[1]); // this is the address of our operand
                 uint16_t resolvedAddress = resolvedAddressBase + static_cast<uint16_t>(RF.Y.read()); // This mode does operand address (like absolute mode) + X
                 uint8_t basePageID = ram.getPageIDFromAddress(resolvedAddressBase);
@@ -200,8 +210,10 @@ namespace cpu::decoder {
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandByteAddress = resolvedAddress; }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::AbY)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             case cpu::instructions::AddressingMode::ZeroPageXIndexed:
+            {
                 uint8_t ZeroPageAddressBase = static_cast<uint8_t>(instrBuffer[1]);
                 uint8_t resolvedZeroPageAddress = ZeroPageAddressBase + RF.X.read(); // this may wraparound, but has no penalty as per documentation
                 uint16_t resolvedAddress = static_cast<uint16_t>(ZEROPAGE_OFFSET) & static_cast<uint16_t>(resolvedZeroPageAddress);
@@ -209,8 +221,10 @@ namespace cpu::decoder {
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandByteAddress = resolvedAddress; }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::ZpX)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             case cpu::instructions::AddressingMode::ZeroPageYIndexed: // like for ZP X, but this is a rare addressing mode, per documentation
+            {
                 uint8_t ZeroPageAddressBase = static_cast<uint8_t>(instrBuffer[1]);
                 uint8_t resolvedZeroPageAddress = ZeroPageAddressBase + RF.Y.read(); // this may wraparound, but has no penalty as per documentation
                 uint16_t resolvedAddress = static_cast<uint16_t>(ZEROPAGE_OFFSET) & static_cast<uint16_t>(resolvedZeroPageAddress);
@@ -218,8 +232,10 @@ namespace cpu::decoder {
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandByteAddress = resolvedAddress; }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::ZpY)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             case cpu::instructions::AddressingMode::Indirect:
+            {
                 // A note: this addressing mode is primarily used for JMP instructions: these are 3 byte instructions where the operand is an address to a 16b word which contains the effective target
                 // for instance, performing JMP ($FF82) will result in a lookup at address $FF82. If $FF82 contains 0xC4 and $FF83 contains 0x80, then we resolve the operand/target as $80C4
                 // NOTE per documentation: on NMOS variants, address of the lookup wraps around the zeropage, so JMP ($11FF) checks lookup at $11FF and $1100 rather than $11FF and $1200
@@ -245,8 +261,10 @@ namespace cpu::decoder {
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandWordAddress = helpers::binary::concatenateWordFromTwoBytes(highByteLookup, lowByteLookup); }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::Ind)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             case cpu::instructions::AddressingMode::IndirectXIndexed:
+            {
                 // Pre-indexed  X mode -> the specified address in a ZP address, to which the contents of X are added.  
                 // The resultant address is itself a ZP address containing the address to look up for the resultant data
                 uint16_t resolvedAddressBase = static_cast<uint16_t>(ZEROPAGE_OFFSET) & static_cast<uint16_t>(instrBuffer[1]);
@@ -257,8 +275,10 @@ namespace cpu::decoder {
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandByteAddress = resolvedAddress; }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::IdX)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             case cpu::instructions::AddressingMode::IndirectYIndexed:
+            {
                 // Pose-indexed Y mode -> the specified address in a ZP address, used for lookup.  
                 // The contents found at the lookup address are added to the contents of Y (check page change for extra cycle) which is used for final lookup
                 uint16_t resolvedAddressBase = static_cast<uint16_t>(ZEROPAGE_OFFSET) & static_cast<uint16_t>(instrBuffer[1]);
@@ -270,8 +290,10 @@ namespace cpu::decoder {
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandByteAddress = lookupAddress; }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::IdY)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             case cpu::instructions::AddressingMode::Relative:
+            {
                 // used only for conditionnal branching. 
                 ///NOTE: these are 2 byte instructions, with the operand being a SIGNED offset onto the incremented program counter,
                 // eg BEQ 0x04 will (asssuming the condition is met) branch to PC + 2 + 0x04, so PC + 0x06
@@ -284,6 +306,7 @@ namespace cpu::decoder {
                 if (instr.instructionModalities == cpu::instructions::InstructionModalities::ReadModifyWrite) { operands.operandWordAddress = resolvedAddress; }; //log the address for future use 
                 if ((instr.addrModalityMask & static_cast<uint16_t>(cpu::instructions::AdressingModeModality::Rel)) > 0) { operands.useInstructionMode = true; }; // check if relevant addressing mode uses this specified 'weird' mode
                 break;
+            }
 
             default:
                 break;

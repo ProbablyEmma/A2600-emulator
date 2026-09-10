@@ -41,7 +41,7 @@ namespace cpu::decoder{
     memory::ram::MemoryRAM& RAM;
 
 
-public:
+    public:
     // constructor where references to ressources are passed 
         InstructionDecoder(cpu::registers::RegisterFile& CPURF, cpu::decoder::OpCodeTableMap& CPUOpCMap, memory::ram::MemoryRAM& systemRAM, cpu::ChipType CPUType = cpu::ChipType::NMOS6502) : RF(CPURF), OpCMap(CPUOpCMap), RAM(systemRAM), CpuTypeFamily(CPUType) {};
         //From the emulator's perspective, these executors run atomically, so a 6 cycle instruction runs all at once THEN stalls for 

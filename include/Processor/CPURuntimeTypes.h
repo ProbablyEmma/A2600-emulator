@@ -5,9 +5,11 @@
 #include <optional>
 #include <Processor/InstructionTypes.h>
 
+using namespace cpu::instructions;
+
 namespace cpu::execution{
     struct OperandData {
-        std::optional<cpu::instructions::AddressingMode> resolvedAddressingMode;
+        std::optional<AddressingMode> resolvedAddressingMode;
         std::optional<uint8_t> operandA;
         std::optional<uint8_t> operandB;
         std::optional<bool> insructionPageCrossed;
